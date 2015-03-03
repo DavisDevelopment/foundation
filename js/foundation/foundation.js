@@ -406,6 +406,14 @@
 
     libs : {},
 
+    /**
+     * Map of all registered "hooks"
+     * ---
+     *  A "hook" is just a Signal instance which gets fired by Foundation lib internals,
+     *  allowing additional/alternative actions to be taken at certain points in execution
+     */
+    hooks : {},
+
     // methods that can be inherited in libraries
     utils : {
 
@@ -711,5 +719,90 @@
       return this;
     });
   };
+
+  /**
+   * Signal Class
+   */
+  Foundation['Signal'] = Signal = (function() {
+	/* Constructor Function */
+	function Signal() {
+		//- If [Signal] is not currently being invoked as a constructor
+		if (!(this instanceof Signal)) {
+			//- Simply invoke it as a constructor, and return the result
+			return new Signal();
+		}
+
+		//- If [Signal] is currently being invoked as a constructor
+		else {
+			//- Then value of "this" inside of Signal handlers
+			this.context = null;
+
+			//- Field to hold all "handlers" of [this] Signal
+			this.handlers = [];
+
+			//- Function to invoke when a handler returns something
+			this.onResult = function( result ) {
+				null;
+			};
+		}
+	}
+
+	//- Alias to [Signal]'s prototype object
+	var _p = Signal.prototype;
+
+	/**
+	 * Signal's "on" method
+	 * @param [handler] Function - An event-handler to be invoked when 
+	 */
+	_p['on'] = function( handler ) {
+		//- Add [handler] to [this]'s Array of handlers
+		this.handlers.push( handler );
+	};
+
+	/**
+	 * Signal's "dispatch" method
+	 * @param [args] Array<Object> - the arguments to pass to each handler
+	 */
+	_p['dispatch'] = function( args ) {
+		//- If [args] is Null, just set it to an empty Array
+		if (args == null || typeof args == 'undefined') {
+			args = [];
+		}
+
+		//- Now, assert that [args] is an Array
+		if (!Array.isArray(args)) {
+			//- Attempt to cast it to an Array
+			try {
+				args = Array.prototype.slice.call(args, 0);
+			}
+
+			//- If that fails
+			catch (err) {
+				//- Just complain that [args] was given as an object we can't work with
+				throw ('Cannot use ' + args + ' as Signal-dispatch arguments!');
+			}
+		}
+
+		//- Now, iterate over all handlers, and invoke them with [args]
+		for (var i = 0; i < this.handlers.length; i++) {
+			//- reference to the current handler
+			var handler = this.handlers[i];
+
+			//- only invoke it if it's a valid Function
+			if (typeof handler === 'function') {
+				//- invoke [handler], and get it's return-value, if any
+				var result = handler.apply(this.context, args);
+
+				//- if [handler] returned anything, hand that off to the creator of [this] Signal
+				if (result != null && (typeof result !== 'undefined')) {
+					
+					this.onResult( result );
+				}
+			}
+		}
+	};
+
+	return Signal;
+  }());
 
 }(jQuery, window, window.document));
